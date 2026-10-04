@@ -10,6 +10,7 @@
         filled
         dense
         emit-value
+        map-options
         v-model="reverseSubmarineSwapDialog.data.wallet"
         :options="g.user.walletOptions"
         label="Wallet *"
@@ -20,8 +21,11 @@
         filled
         dense
         emit-value
+        map-options
         v-model="reverseSubmarineSwapDialog.data.asset"
         :options="assetOptions"
+        option-value="value"
+        option-label="label"
         label="Asset"
       >
       </q-select>
@@ -48,7 +52,6 @@
             :options="currencies"
             :display-value="reverseSubmarineSwapDialog.data.currency || 'sats'"
             label="Currency"
-            @update:model-value="updateFiatRate"
           ></q-select>
         </div>
       </div>
@@ -93,7 +96,17 @@
         v-if="reverseSubmarineSwapDialog.data.asset"
         :label="reverseSubmarineSwapDialog.data.asset.split('/')[0] + ' onchain address to receive funds'"
         hint="Enter your Bitcoin address to receive funds (e.g., bc1q...)"
-      ></q-input>
+      >
+        <template v-slot:append>
+          <q-icon
+            name="qr_code_scanner"
+            @click="openScanner('reverse_onchain')"
+            class="cursor-pointer"
+          >
+            <q-tooltip>Scan QR code</q-tooltip>
+          </q-icon>
+        </template>
+      </q-input>
       <div class="row q-mt-lg">
         <q-btn
           v-if="reverseSubmarineSwapDialog.data.id"
@@ -106,9 +119,10 @@
           v-else
           unelevated
           color="primary"
+          :loading="swapSubmitting.reverse"
           :disable="disableReverseSubmarineSwapDialog()"
           type="submit"
-          label="Send to Bitcoin address"
+          label="Send to Onchain"
         ></q-btn>
         <q-btn
           v-close-popup

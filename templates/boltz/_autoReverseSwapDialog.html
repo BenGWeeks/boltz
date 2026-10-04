@@ -10,6 +10,7 @@
         filled
         dense
         emit-value
+        map-options
         v-model="autoReverseSubmarineSwapDialog.data.wallet"
         :options="g.user.walletOptions"
         label="Wallet *"
@@ -20,8 +21,11 @@
         filled
         dense
         emit-value
+        map-options
         v-model="autoReverseSubmarineSwapDialog.data.asset"
         :options="assetOptions"
+        option-value="value"
+        option-label="label"
         label="Asset"
       >
       </q-select>
@@ -104,7 +108,7 @@
           color="primary"
           :disable="disableAutoReverseSubmarineSwapDialog()"
           type="submit"
-          label="Enable Auto Cash Out"
+          label="Enable Auto Sweep"
         ></q-btn>
         <q-btn
           v-close-popup
