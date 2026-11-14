@@ -28,8 +28,8 @@ python = ">=3.10,<3.13"
 [tool.uv]
 exclude-newer = "2026-11-14T00:00:00Z"
 build-constraint-dependencies = ["scikit-build-core<0.10"]
-# bitstring 5 drops ConstBitStream, which bolt11 (an LNbits dependency) imports
-constraint-dependencies = ["bitstring<5"]
+# bitstring 5 drops ConstBitStream, which bolt11 (an LNbits dependency) imports; pyln-proto pinned to the official LNbits 1.7.1 lock (newer releases pull the coincurve-cp314-fix fork)
+constraint-dependencies = ["bitstring<5", "pyln-proto<=26.4.1"]
 
 [tool.mypy]
 exclude = ["boltz_client"]
