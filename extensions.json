@@ -1,0 +1,16 @@
+{
+  "extensions": [
+    {
+      "id": "boltz",
+      "repo": "https://github.com/BenGWeeks/boltz",
+      "name": "Boltz",
+      "version": "1.1.1+lnbits17",
+      "min_lnbits_version": "1.7.0",
+      "short_description": "Weeks-family build of upstream boltz_v2 (lnbits/boltz#76, Boltz API v2) ported to Pydantic 2 for LNbits 1.7. Stay on this line: the database is at migration 7.",
+      "icon": "https://raw.githubusercontent.com/BenGWeeks/boltz/weeks-family/static/image/boltz.png",
+      "details_link": "https://raw.githubusercontent.com/BenGWeeks/boltz/weeks-family/config.json",
+      "archive": "https://github.com/BenGWeeks/boltz/archive/refs/tags/v1.1.1-lnbits17.zip",
+      "hash": "04ed6d549fc02cc01936d59656ef4aeadd3d8616ff165ecf6ace20e2a5bbf416"
+    }
+  ]
+}
