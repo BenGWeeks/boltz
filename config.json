@@ -1,6 +1,6 @@
 {
   "id": "boltz",
-  "version": "1.1.1+lnbits17",
+  "version": "1.1.1+lnbits17.1",
   "name": "Boltz",
   "repo": "https://github.com/lnbits/boltz",
   "short_description": "Perform onchain/offchain swaps with Liquid support",

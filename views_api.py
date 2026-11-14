@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from lnbits.core.crud import get_user
+from lnbits.core.crud import get_user, get_wallet
 from lnbits.core.models import WalletTypeInfo
 from lnbits.core.services import create_invoice
 from lnbits.decorators import (
@@ -21,6 +21,7 @@ from .crud import (
     create_submarine_swap,
     delete_auto_reverse_submarine_swap,
     delete_boltz_settings,
+    get_auto_reverse_submarine_swap,
     get_auto_reverse_submarine_swap_by_wallet,
     get_auto_reverse_submarine_swaps,
     get_or_create_boltz_settings,
@@ -55,6 +56,29 @@ def api_boltz_client_support():
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             detail=detail,
         )
+
+
+async def is_user_wallet(
+    wallet_id: str, key_info: WalletTypeInfo, include_deleted: bool = False
+) -> bool:
+    # any wallet of the key's user is allowed, as the UI sends the first wallet's key
+    # swaps stay reachable after their wallet is deleted, so owners can refund
+    wallet = await get_wallet(wallet_id, deleted=None if include_deleted else False)
+    return wallet is not None and wallet.user == key_info.wallet.user
+
+
+async def require_user_wallet(wallet_id: str, key_info: WalletTypeInfo) -> None:
+    if not await is_user_wallet(wallet_id, key_info):
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail="Wallet does not belong to this user.",
+        )
+
+
+def swap_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=HTTPStatus.NOT_FOUND, detail="swap does not exist."
+    )
 
 
 async def api_address_validation(address: str, asset: str):
@@ -109,16 +133,18 @@ async def api_submarineswap(
         },
     },
 )
-async def api_submarineswap_refund(swap_id: str):
+async def api_submarineswap_refund(
+    swap_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
+):
     if not swap_id:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST, detail="swap_id missing"
         )
     swap = await get_submarine_swap(swap_id)
-    if not swap:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="swap does not exist."
-        )
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
+        raise swap_not_found()
     if swap.status != "pending":
         raise HTTPException(
             status_code=HTTPStatus.METHOD_NOT_ALLOWED, detail="swap is not pending."
@@ -167,7 +193,10 @@ async def api_submarineswap_refund(swap_id: str):
         500: {"description": "boltz error"},
     },
 )
-async def api_submarineswap_create(data: CreateSubmarineSwap) -> SubmarineSwap:
+async def api_submarineswap_create(
+    data: CreateSubmarineSwap, key_info: WalletTypeInfo = Depends(require_admin_key)
+) -> SubmarineSwap:
+    await require_user_wallet(data.wallet, key_info)
     auto_swap = await get_auto_reverse_submarine_swap_by_wallet(data.wallet)
     if auto_swap:
         raise HTTPException(
@@ -253,7 +282,9 @@ async def api_reverse_submarineswap(
 )
 async def api_reverse_submarineswap_create(
     data: CreateReverseSubmarineSwap,
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ) -> ReverseSubmarineSwap:
+    await require_user_wallet(data.wallet, key_info)
     api_boltz_client_support()
     await api_address_validation(data.onchain_address, data.asset)
 
@@ -335,7 +366,9 @@ async def api_auto_reverse_submarineswap(
 )
 async def api_auto_reverse_submarineswap_create(
     data: CreateAutoReverseSubmarineSwap,
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ) -> AutoReverseSubmarineSwap:
+    await require_user_wallet(data.wallet, key_info)
     auto_swap = await get_auto_reverse_submarine_swap_by_wallet(data.wallet)
     if auto_swap:
         raise HTTPException(
@@ -358,7 +391,14 @@ async def api_auto_reverse_submarineswap_create(
     response_description="delete auto reverse swap",
     dependencies=[Depends(require_admin_key)],
 )
-async def api_auto_reverse_submarineswap_delete(swap_id: str):
+async def api_auto_reverse_submarineswap_delete(
+    swap_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
+):
+    swap = await get_auto_reverse_submarine_swap(swap_id)
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
+        raise swap_not_found()
     await delete_auto_reverse_submarine_swap(swap_id)
     return "OK"
 
@@ -376,14 +416,16 @@ async def api_auto_reverse_submarineswap_delete(swap_id: str):
         404: {"description": "when swap_id is not found"},
     },
 )
-async def api_swap_status(swap_id: str):
+async def api_swap_status(
+    swap_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
+):
     swap = await get_submarine_swap(swap_id) or await get_reverse_submarine_swap(
         swap_id
     )
-    if not swap:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="swap does not exist."
-        )
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
+        raise swap_not_found()
     try:
         client = await create_boltz_client(swap.asset)
         status = await client.swap_status(swap.boltz_id)
