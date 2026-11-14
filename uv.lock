@@ -486,7 +486,7 @@ wheels = [
 
 [[package]]
 name = "boltz"
-version = "1.1.1+lnbits17"
+version = "1.1.1+lnbits17.1"
 source = { virtual = "." }
 dependencies = [
     { name = "lnbits" },

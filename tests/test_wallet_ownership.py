@@ -316,3 +316,40 @@ async def test_list_endpoints_only_return_the_users_swaps(client, calls):
         assert [s["wallet"] for s in r.json()] == [w2.id], path
         r = await client.get(path, headers=headers(w1))
         assert r.json() == [], path
+
+
+async def test_invoice_key_cannot_create_or_act_on_swaps(client, calls):
+    (w1,) = await new_user()
+    invoice_key = {"X-Api-Key": w1.inkey}
+    for path, body in [
+        ("/boltz/api/v1/swap", swap_body(w1.id)),
+        ("/boltz/api/v1/swap/reverse", reverse_body(w1.id)),
+        ("/boltz/api/v1/swap/reverse/auto", reverse_body(w1.id)),
+    ]:
+        r = await client.post(path, json=body, headers=invoice_key)
+        assert r.status_code in (401, 403), (path, r.text)
+    r = await client.post(
+        f"/boltz/api/v1/swap/refund?swap_id={uuid4().hex}", headers=invoice_key
+    )
+    assert r.status_code in (401, 403, 404), r.text
+    assert calls == []
+    await no_swaps_for(w1.id)
+
+
+async def test_owner_can_still_reach_swap_after_deleting_its_wallet(client, calls):
+    w1, w2 = await new_user(2)
+    r = await client.post(
+        "/boltz/api/v1/swap", json=swap_body(w2.id), headers=headers(w1)
+    )
+    assert r.status_code == 201, r.text
+    swap_id = r.json()["id"]
+    await delete_wallet(user_id=w1.user, wallet_id=w2.id)
+    r = await client.post(
+        f"/boltz/api/v1/swap/status?swap_id={swap_id}", headers=headers(w1)
+    )
+    assert r.status_code == 200, r.text
+    (attacker,) = await new_user()
+    r = await client.post(
+        f"/boltz/api/v1/swap/status?swap_id={swap_id}", headers=headers(attacker)
+    )
+    assert r.status_code == 404, r.text

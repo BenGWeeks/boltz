@@ -58,9 +58,12 @@ def api_boltz_client_support():
         )
 
 
-async def is_user_wallet(wallet_id: str, key_info: WalletTypeInfo) -> bool:
+async def is_user_wallet(
+    wallet_id: str, key_info: WalletTypeInfo, include_deleted: bool = False
+) -> bool:
     # any wallet of the key's user is allowed, as the UI sends the first wallet's key
-    wallet = await get_wallet(wallet_id)
+    # swaps stay reachable after their wallet is deleted, so owners can refund
+    wallet = await get_wallet(wallet_id, deleted=None if include_deleted else False)
     return wallet is not None and wallet.user == key_info.wallet.user
 
 
@@ -138,7 +141,9 @@ async def api_submarineswap_refund(
             status_code=HTTPStatus.BAD_REQUEST, detail="swap_id missing"
         )
     swap = await get_submarine_swap(swap_id)
-    if not swap or not await is_user_wallet(swap.wallet, key_info):
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
         raise swap_not_found()
     if swap.status != "pending":
         raise HTTPException(
@@ -390,7 +395,9 @@ async def api_auto_reverse_submarineswap_delete(
     swap_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     swap = await get_auto_reverse_submarine_swap(swap_id)
-    if not swap or not await is_user_wallet(swap.wallet, key_info):
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
         raise swap_not_found()
     await delete_auto_reverse_submarine_swap(swap_id)
     return "OK"
@@ -415,7 +422,9 @@ async def api_swap_status(
     swap = await get_submarine_swap(swap_id) or await get_reverse_submarine_swap(
         swap_id
     )
-    if not swap or not await is_user_wallet(swap.wallet, key_info):
+    if not swap or not await is_user_wallet(
+        swap.wallet, key_info, include_deleted=True
+    ):
         raise swap_not_found()
     try:
         client = await create_boltz_client(swap.asset)
