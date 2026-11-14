@@ -39,7 +39,7 @@ class CreateSubmarineSwap(BaseModel):
     refund_address: str = Query(...)
     amount: int = Query(...)
     direction: str = Query("receive")
-    feerate: bool = Query(None)
+    feerate: bool = Query(False)
     feerate_value: int | None = Query(None)
 
 
@@ -73,7 +73,7 @@ class CreateReverseSubmarineSwap(BaseModel):
     direction: str = Query("send")
     instant_settlement: bool = Query(...)
     onchain_address: str = Query(...)
-    feerate: bool = Query(None)
+    feerate: bool = Query(False)
     feerate_value: int | None = Query(None)
 
 
